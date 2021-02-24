@@ -224,8 +224,13 @@ RoutePlannerVisibilityService::processReceivedLmcpMessage(std::unique_ptr<uxas::
                 std::dynamic_pointer_cast<afrl::vehicles::SurfaceVehicleConfiguration>(itEntityConfiguration->second)))
         {
             auto routePlanResponse = std::make_shared<uxas::messages::route::RoutePlanResponse>();
+            auto before = std::chrono::system_clock::now();
             if (bProcessRoutePlanRequest(request, routePlanResponse))
             {
+                auto after = std::chrono::system_clock::now();
+                std::chrono::duration<double> elapsed_seconds = after - before;
+                std::cout << "(Shortest Path Calculation) Elapsed Time: " << elapsed_seconds.count() << std::endl;
+
                 auto message = std::static_pointer_cast<avtas::lmcp::Object>(routePlanResponse);
                 // always limited-cast route plan responses
                 sendSharedLmcpObjectLimitedCastMessage(

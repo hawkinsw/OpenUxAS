@@ -29,6 +29,8 @@
 
 #include <algorithm>
 
+#include <chrono>
+
 #define STRING_COMPONENT_NAME "RoutePlanner"
 #define STRING_XML_COMPONENT_TYPE STRING_COMPONENT_NAME
 
@@ -95,7 +97,12 @@ RoutePlannerService::processReceivedLmcpMessage(std::unique_ptr<uxas::communicat
         if (m_airVehicles.find(request->getVehicleID()) != m_airVehicles.end() ||
                 m_surfaceVehicles.find(request->getVehicleID()) != m_surfaceVehicles.end())
         {
+            auto before = std::chrono::system_clock::now();
             std::shared_ptr<uxas::messages::route::RoutePlanResponse> response = HandleRoutePlanRequestMsg(request);
+            auto after = std::chrono::system_clock::now();
+            std::chrono::duration<double> elapsed_seconds = after - before;
+            std::cout << "(Shortest Path Calculation) Elapsed Time: " << elapsed_seconds.count() << std::endl;
+
             std::shared_ptr<avtas::lmcp::Object> pResponse = std::static_pointer_cast<avtas::lmcp::Object>(response);
             // always limited-cast route plan responses
             sendSharedLmcpObjectLimitedCastMessage(
