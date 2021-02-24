@@ -2418,19 +2418,92 @@ namespace VisiLibity
     //For now, just find one shortest path, later change this to a
     //vector to find all shortest paths (w/in epsilon).
     Polyline shortest_path_output;
-    Visibility_Polygon start_visibility_polygon(start, *this, epsilon);
 
     //Trivial cases
-    if( distance(start,finish) <= epsilon ){
-      shortest_path_output.push_back(start);
-      return shortest_path_output;
-    }
-    else if( finish.in(start_visibility_polygon, epsilon) ){
-      shortest_path_output.push_back(start);
-      shortest_path_output.push_back(finish);
-      return shortest_path_output;
+		{
+      if (PRINTING_DEBUG_DATA) {
+        std::cout << "-----------------------------------------" << std::endl
+                  << "Considering trivial cases." << std::endl;
+      }
+
+      //First, are the start and the finish the same point?
+      if( distance(start,finish) <= epsilon ){
+        shortest_path_output.push_back(start);
+        if (PRINTING_DEBUG_DATA) {
+          std::cout << "Start can see the finish." << std::endl
+                    << "Done considering trivial cases." << std::endl
+                    << "-----------------------------------------" << std::endl;
+        }
+        return shortest_path_output;
+      }
+
+		  //Second, can the start see the finish directly?
+      bool start_can_see_finish = true;
+      Line_Segment start_to_finish{start, finish, epsilon};
+      size_t num_holes_in_env = holes_.size();
+
+      if (PRINTING_DEBUG_DATA) {
+        std::cout << "There are " << num_holes_in_env << " holes in this environment."
+                  << std::endl;
+      }
+
+      //For each of the holes, ...
+      //(note: <= h() here because [] includes the boundary *and* the holes.
+      for (int hole_ctr = 0; hole_ctr<=h(); hole_ctr++) {
+        //... consider whether the ray between start and finish intersect any one of its edges.
+        Polygon hole = (*this)[hole_ctr];
+
+        if (PRINTING_DEBUG_DATA) {
+          std::cout << "This hole has " << hole.n() << " vertices." << std::endl;
+        }
+
+        //For each vertex in the hole, ...
+        for (int vertex_idx = 0; vertex_idx<hole.n(); vertex_idx++) {
+          //... construct an edge between that hole and the next.
+          //Note: the accessor to hole automatically wraps! Nice!
+          Line_Segment current_edge{hole[vertex_idx], hole[vertex_idx+1], epsilon};
+
+          if (PRINTING_DEBUG_DATA) {
+            std::cout << "Consider the edge between vertices " << vertex_idx
+                      << " and " << (vertex_idx+1) << std::endl;
+          }
+
+          //If there is an intersection, it is immediately clear that there is
+          //no way that the start can see the finish. So, break out quickly.
+          if( intersect(start_to_finish, current_edge, epsilon) ) {
+            start_can_see_finish = false;
+            break;
+          }
+        }
+        //Stop the madness as soon as it is clear that the start cannot see the
+        //finish.
+        if (!start_can_see_finish) {
+          break;
+        }
+      }
+
+      if (start_can_see_finish) {
+        if (PRINTING_DEBUG_DATA) {
+          std::cout << "Start can see the finish." << std::endl
+                    << "Done considering trivial cases." << std::endl
+                    << "-----------------------------------------" << std::endl;
+        }
+
+        shortest_path_output.push_back(start);
+        shortest_path_output.push_back(finish);
+        return shortest_path_output;
+      } else {
+        if (PRINTING_DEBUG_DATA) {
+          std::cout << "Start cannot see the finish; continuing." << std::endl
+                    << "Done considering trivial cases." << std::endl
+                    << "-----------------------------------------" << std::endl;
+        }
+      }
     }
 
+    //Now that the simple cases are out of the way, get down to the real work ...
+
+    Visibility_Polygon start_visibility_polygon(start, *this, epsilon);
     Visibility_Polygon finish_visibility_polygon(finish, *this, epsilon);
 
     //Connect start and finish Points to the visibility graph
